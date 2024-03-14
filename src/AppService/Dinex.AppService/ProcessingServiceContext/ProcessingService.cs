@@ -8,17 +8,20 @@
         private readonly IQueueInRepository _queueInRepository;
         private readonly IInvestmentHistoryRepository _investmentHistoryRepository;
         private readonly IStockBrokerRepository _stockBrokerRepository;
+        private readonly IAssetRepository _assetRepository;
 
         public ProcessingService(
             ILogger<ProcessingService> logger,
             IQueueInRepository queueInRepository,
             IInvestmentHistoryRepository investmentHistoryRepository,
-            IStockBrokerRepository stockBrokerRepository)
+            IStockBrokerRepository stockBrokerRepository,
+            IAssetRepository assetRepository)
         {
             _logger = logger;
             _queueInRepository = queueInRepository;
             _investmentHistoryRepository = investmentHistoryRepository;
             _stockBrokerRepository = stockBrokerRepository;
+            _assetRepository = assetRepository;
         }
 
         public async Task ProcessQueueIn(Guid userId)
@@ -69,9 +72,10 @@
             if (boughtAssets.Any())
             {
                 var stockBrokerNames = boughtAssets.Select(x => x.Institution).Distinct();
-                var stockBockerProducts = boughtAssets.Select(x => x.Product).Distinct();
+                var assetNames = boughtAssets.Select(x => x.Product).Distinct();
 
                 var stockBrokers = await StockBrokerAddRangeAsync(stockBrokerNames);
+                var assets = await AssetsAddAsync(assetNames);
             }
         }
 
@@ -82,7 +86,7 @@
 
         private async Task<IEnumerable<StockBroker>> StockBrokerAddRangeAsync(IEnumerable<string> stockBrokerNames)
         {
-            IEnumerable<StockBroker> stockBrokersFound = await _stockBrokerRepository.FindAsync(x => stockBrokerNames.Contains(x.Name));
+            var stockBrokersFound = await _stockBrokerRepository.FindAsync(x => stockBrokerNames.Contains(x.Name));
             
             var stockBrokerNamesToCreate = stockBrokerNames.Except(stockBrokersFound.Select(x => x.Name));
 
@@ -93,30 +97,18 @@
             return stockBrokers;
         }
 
-        //private async Task<InvestingProduct> InvestingProductAddAsync(string[] productData)
-        //{
-        //    var productCode = productData[0].Trim();
+        private async Task<IEnumerable<Asset>> AssetsAddAsync(IEnumerable<string> AssetNames)
+        {
+            var assetsFound = await _assetRepository.FindAsync(x => AssetNames.Contains($"{x.Ticker} - {x.CompanyName}"));
 
-        //    var investingProduct = await _productRepository.GetByNameAsync(productCode);
-        //    if (investingProduct is null)
-        //    {
-        //        var countPos = productData.Length;
+            var assetNamesToCreate = AssetNames.Except(assetsFound.Select(x => $"{x.Ticker} - {x.CompanyName}"));
 
-        //        var companyName = productData[1].Trim();
-        //        if (countPos > 2)
-        //            companyName = $"{companyName} - {productData[2].Trim()}";
+            var assets = Asset.CreateRange(assetNamesToCreate);
 
-        //        investingProduct = new InvestingProduct
-        //        {
-        //            ProductCode = productCode,
-        //            CompanyName = companyName,
-        //            CreatedAt = DateTime.UtcNow,
-        //        };
-        //        await _productRepository.AddAsync(investingProduct);
-        //    }
+            await _assetRepository.AddRangeAsync(assets);
 
-        //    return investingProduct;
-        //}
+            return assets;
+        }
 
         //private async Task InvestingLaunchAddAsync(InvestingHistoryFile investingHistoryFile,
         //    InvestingBrokerage investingBrokerage,

@@ -9,8 +9,12 @@
 
         public DbSet<User> Users { get; set; }
         public DbSet<QueueIn> QueueIn { get; set; }
+
+        #region investment
         public DbSet<InvestmentHistory> InvestmentHistory { get; set; }
         public DbSet<StockBroker> StockBrokers { get; set; }
+        public DbSet<Asset> Assets { get; set; }
+        #endregion
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

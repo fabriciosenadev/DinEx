@@ -20,6 +20,7 @@
             services.AddScoped<IQueueInRepository, QueueInRepository>();
             services.AddScoped<IInvestmentHistoryRepository, InvestmentHistoryRepository>();
             services.AddScoped<IStockBrokerRepository, StockBrokerRepository>();
+            services.AddScoped<IAssetRepository, AssetRepository>();
             #endregion
 
             return services;
