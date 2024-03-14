@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Dinex.Infra.Db.Migrations
 {
     /// <inheritdoc />
-    public partial class AddEntityUsers : Migration
+    public partial class AddEntityUser : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

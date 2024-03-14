@@ -30,5 +30,10 @@
 
             return assetList;
         }
+
+        public static string FormatNameForFile(string ticker, string companyName)
+        {
+            return $"{ticker} - {companyName}";
+        }
     }
 }

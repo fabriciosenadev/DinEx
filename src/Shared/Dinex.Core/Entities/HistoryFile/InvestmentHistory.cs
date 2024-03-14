@@ -7,7 +7,7 @@ namespace Dinex.Core
         public Guid QueueId { get; private set; }
         public Applicable Applicable { get; private set; }
         public DateTime Date { get; private set; }
-        public InvestingTrnasactionType TrnasactionType { get; private set; }
+        public InvestmentTransactionType TransactionType { get; private set; }
         public string Product { get; private set; }
         public string Institution { get; private set; }
         public int Quantity { get; private set; }
@@ -30,7 +30,7 @@ namespace Dinex.Core
                 QueueId = queueInId,
                 Applicable = GetApplicable(selectedApplicable),
                 Date = DateTime.Parse(activityDate, culture),
-                TrnasactionType = GetInvestmentActivityTypeByDescription(selectedActivity),
+                TransactionType = GetInvestmentActivityTypeByDescription(selectedActivity),
                 Product = selectedProduct,
                 Institution = selectedInstitution,
                 Quantity = ConvertToInt(selectedQuantity),
@@ -38,7 +38,7 @@ namespace Dinex.Core
                 OperationValue = ConvertToDecimal(selectedOperationValue)
             };
 
-            if (historyFile.TrnasactionType == InvestingTrnasactionType.Unknown)
+            if (historyFile.TransactionType == InvestmentTransactionType.Unknown)
             {
                 var errorMsg = $"Erro ao identificar tipo de atividade {selectedActivity}, para o produto {selectedProduct} na data {historyFile.Date}";
                 historyFile.AddNotification("InvestingHistory.ActivityType", errorMsg);
@@ -58,13 +58,13 @@ namespace Dinex.Core
             return investmentHistoryList;
         }
 
-        private static InvestingTrnasactionType GetInvestmentActivityTypeByDescription(string? description)
+        private static InvestmentTransactionType GetInvestmentActivityTypeByDescription(string? description)
         {
-            var enumValues = Enum.GetValues(typeof(InvestingTrnasactionType));
+            var enumValues = Enum.GetValues(typeof(InvestmentTransactionType));
 
             foreach (var enumValue in enumValues)
             {
-                if (enumValue is InvestingTrnasactionType activityType)
+                if (enumValue is InvestmentTransactionType activityType)
                 {
                     var enumDescription = GetEnumDescription(activityType);
 
@@ -73,7 +73,7 @@ namespace Dinex.Core
                 }
             }
 
-            return InvestingTrnasactionType.Unknown;
+            return InvestmentTransactionType.Unknown;
         }
 
         private static string GetEnumDescription(Enum enumValue)

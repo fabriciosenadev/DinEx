@@ -19,7 +19,7 @@ namespace Dinex.Infra.Db.Migrations
                     QueueId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Applicable = table.Column<int>(type: "INTEGER", nullable: false),
                     Date = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    TrnasactionType = table.Column<int>(type: "INTEGER", nullable: false),
+                    TransactionType = table.Column<int>(type: "INTEGER", nullable: false),
                     Product = table.Column<string>(type: "TEXT", nullable: false),
                     Institution = table.Column<string>(type: "TEXT", nullable: false),
                     Quantity = table.Column<int>(type: "INTEGER", nullable: false),

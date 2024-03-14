@@ -11,14 +11,44 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dinex.Infra.Db.Migrations
 {
     [DbContext(typeof(DinexApiContext))]
-    [Migration("20240312034406_AddEntityUsers")]
-    partial class AddEntityUsers
+    [Migration("20240314035035_AddEntityQueueIn")]
+    partial class AddEntityQueueIn
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.3");
+
+            modelBuilder.Entity("Dinex.Core.QueueIn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("QueueIn");
+                });
 
             modelBuilder.Entity("Dinex.Core.User", b =>
                 {

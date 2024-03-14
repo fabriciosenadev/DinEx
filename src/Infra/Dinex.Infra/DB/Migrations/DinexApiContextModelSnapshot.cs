@@ -83,7 +83,7 @@ namespace Dinex.Infra.Db.Migrations
                     b.Property<Guid>("QueueId")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("TrnasactionType")
+                    b.Property<int>("TransactionType")
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("UnitPrice")
