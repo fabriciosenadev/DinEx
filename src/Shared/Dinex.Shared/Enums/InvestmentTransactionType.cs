@@ -1,6 +1,6 @@
-﻿namespace Dinex.Core
+﻿namespace Dinex.Shared
 {
-    public enum InvestingTrnasactionType
+    public enum InvestmentTransactionType
     {
         [Description("Bonificação em Ativos")]
         AssetBonus,

@@ -3,6 +3,7 @@ using System;
 using Dinex.Infra;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dinex.Infra.Db.Migrations
 {
     [DbContext(typeof(DinexApiContext))]
-    partial class DinexApiContextModelSnapshot : ModelSnapshot
+    [Migration("20240314040140_AddEntityTransactionHistory")]
+    partial class AddEntityTransactionHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.3");
@@ -31,9 +34,6 @@ namespace Dinex.Infra.Db.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TaxId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Ticker")
@@ -98,50 +98,6 @@ namespace Dinex.Infra.Db.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("InvestmentHistory");
-                });
-
-            modelBuilder.Entity("Dinex.Core.InvestmentTransaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Applicable")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("AssetId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("AssetQuantity")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("AssetTransactionAmount")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("AssetUnitPrice")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("StockBrokerId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("TransactionHistoryId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TransactionType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("InvestmentTransactions");
                 });
 
             modelBuilder.Entity("Dinex.Core.QueueIn", b =>

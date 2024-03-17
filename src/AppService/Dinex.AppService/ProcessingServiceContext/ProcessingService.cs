@@ -9,19 +9,25 @@
         private readonly IInvestmentHistoryRepository _investmentHistoryRepository;
         private readonly IStockBrokerRepository _stockBrokerRepository;
         private readonly IAssetRepository _assetRepository;
+        private readonly ITransactionHistoryRepository _transactionHistoryRepository;
+        private readonly IInvestmentTransactionRepository _investmentTransactionRepository;
 
         public ProcessingService(
             ILogger<ProcessingService> logger,
             IQueueInRepository queueInRepository,
             IInvestmentHistoryRepository investmentHistoryRepository,
             IStockBrokerRepository stockBrokerRepository,
-            IAssetRepository assetRepository)
+            IAssetRepository assetRepository,
+            ITransactionHistoryRepository transactionHistoryRepository,
+            IInvestmentTransactionRepository investmentTransactionRepository)
         {
             _logger = logger;
             _queueInRepository = queueInRepository;
             _investmentHistoryRepository = investmentHistoryRepository;
             _stockBrokerRepository = stockBrokerRepository;
             _assetRepository = assetRepository;
+            _transactionHistoryRepository = transactionHistoryRepository;
+            _investmentTransactionRepository = investmentTransactionRepository;
         }
 
         public async Task ProcessQueueIn(Guid userId)
@@ -34,13 +40,13 @@
             if (investmentQueueIn.Count > 0)
             {
                 var queueInIds = investmentQueueIn.Select(x => x.Id);
-                //await ProcessingInvestment(queueInIds, userId);
+                await ProcessingInvestment(queueInIds, userId);
 
-                //investmentQueueIn.ForEach(x =>
-                //{
-                //    x.UpdatedAt = DateTime.UtcNow;
-                //});
-                //await _queueInRepository.UpdateRangeAsync(investmentQueueIn);
+                investmentQueueIn.ForEach(x =>
+                {
+                    x.UpdatedAt = DateTime.UtcNow;
+                });
+                await _queueInRepository.UpdateRangeAsync(investmentQueueIn);
             }
 
             var financialPlanningQueueIn = queueIn.Where(x => x.Type == TransactionActivity.FinancialPlanning).ToList();
@@ -66,16 +72,18 @@
             var investmentData = await _investmentHistoryRepository.FindAsync(x => queueInIds.Contains(x.QueueId));
 
             var boughtAssets = investmentData.Where(x =>
-                    x.TrnasactionType == InvestingTrnasactionType.Transfer
+                    x.TransactionType == InvestmentTransactionType.Transfer
                     ||
-                    x.TrnasactionType == InvestingTrnasactionType.SettlementTransfer);
+                    x.TransactionType == InvestmentTransactionType.SettlementTransfer);
             if (boughtAssets.Any())
             {
                 var stockBrokerNames = boughtAssets.Select(x => x.Institution).Distinct();
-                var assetNames = boughtAssets.Select(x => x.Product).Distinct();
-
                 var stockBrokers = await StockBrokerAddRangeAsync(stockBrokerNames);
-                var assets = await AssetsAddAsync(assetNames);
+
+                var assetNames = boughtAssets.Select(x => x.Product).Distinct();
+                var assets = await AssetsAddRangeAsync(assetNames);
+
+                await InvestmentTransactionsAddRangeAsync(boughtAssets, stockBrokers, assets, userId);
             }
         }
 
@@ -87,8 +95,10 @@
         private async Task<IEnumerable<StockBroker>> StockBrokerAddRangeAsync(IEnumerable<string> stockBrokerNames)
         {
             var stockBrokersFound = await _stockBrokerRepository.FindAsync(x => stockBrokerNames.Contains(x.Name));
-            
+
             var stockBrokerNamesToCreate = stockBrokerNames.Except(stockBrokersFound.Select(x => x.Name));
+            if(!stockBrokerNamesToCreate.Any())
+                return stockBrokersFound;
 
             var stockBrokers = StockBroker.CreateRange(stockBrokerNamesToCreate);
 
@@ -97,48 +107,92 @@
             return stockBrokers;
         }
 
-        private async Task<IEnumerable<Asset>> AssetsAddAsync(IEnumerable<string> AssetNames)
+        private async Task<IEnumerable<Asset>> AssetsAddRangeAsync(IEnumerable<string> assetNames)
         {
-            var assetsFound = await _assetRepository.FindAsync(x => AssetNames.Contains($"{x.Ticker} - {x.CompanyName}"));
+            try
+            {
+                var assetsFound = await _assetRepository.FindAsync(x => assetNames.Contains(x.Ticker.Trim()));
 
-            var assetNamesToCreate = AssetNames.Except(assetsFound.Select(x => $"{x.Ticker} - {x.CompanyName}"));
+                var assetNamesToCreate = assetNames.Except(assetsFound.Select(x => x.Ticker.Trim()));
+                if (!assetNamesToCreate.Any())
+                    return assetsFound;
 
-            var assets = Asset.CreateRange(assetNamesToCreate);
+                var assets = Asset.CreateRange(assetNamesToCreate);
 
-            await _assetRepository.AddRangeAsync(assets);
+                await _assetRepository.AddRangeAsync(assets);
 
-            return assets;
+                return assets;
+
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
         }
 
-        //private async Task InvestingLaunchAddAsync(InvestingHistoryFile investingHistoryFile,
-        //    InvestingBrokerage investingBrokerage,
-        //    InvestingProduct investingProduct,
-        //    Guid userId)
-        //{
-        //    var launch = new Launch
-        //    {
-        //        Activity = TransactionActivity.Investing,
-        //        Date = GetOperationDate(investingHistoryFile.Date),
-        //        UserId = userId,
-        //        CreatedAt = DateTime.UtcNow,
-        //    };
-        //    await _launchRepository.AddAsync(launch);
+        private async Task InvestmentTransactionsAddRangeAsync(IEnumerable<InvestmentHistory> boughtAssets,
+            IEnumerable<StockBroker> stockBrokers,
+            IEnumerable<Asset> assets,
+            Guid userId)
+        {
+            try
+            {
+                var transactionHistories = new List<TransactionHistory>();
+                var investmentTransactions = new List<InvestmentTransaction>();
+                foreach (var boughtAsset in boughtAssets)
+                {
+                    var assetId = assets.Where(x => boughtAsset.Product.Contains(x.Ticker.Trim()))
+                                        .Select(x => x.Id).First();
+                    var stockBrokerId = stockBrokers.Where(x => x.Name == boughtAsset.Institution)
+                                                                .Select(x => x.Id).First();
 
-        //    var investingLaunch = new InvestingLaunch
-        //    {
-        //        LaunchId = launch.Id,
-        //        Applicable = investingHistoryFile.Applicable,
-        //        InvestingActivity = investingHistoryFile.ActivityType,
-        //        ProductId = investingProduct.Id,
-        //        UnitPrice = investingHistoryFile.UnitPrice,
-        //        OperationPrice = investingHistoryFile.OperationValue,
-        //        ProductOperationQuantity = investingHistoryFile.Quantity,
-        //        InvestingBrokerageId = investingBrokerage.Id,
-        //        CreatedAt = DateTime.UtcNow,
-        //    };
-        //    await _launchInvestingRepository.AddAsync(investingLaunch);
-        //}
+                    var transactionHistory = TransactionHistory.Create(
+                        userId,
+                        GetOperationDate(boughtAsset.Date),
+                        TransactionActivity.Investment);
+                    transactionHistories.Add(transactionHistory);
 
+                    var investmentTransaction = InvestmentTransaction.Create(
+                        transactionHistoryId: transactionHistory.Id,
+                        applicable: boughtAsset.Applicable,
+                        transactionType: boughtAsset.TransactionType,
+                        assetId,
+                        unitPrice: boughtAsset.UnitPrice,
+                        transactionAmount: boughtAsset.OperationValue,
+                        assetQuantity: boughtAsset.Quantity,
+                        stockBrokerId);
+                    investmentTransactions.Add(investmentTransaction);
+                }
+
+
+                await _transactionHistoryRepository.AddRangeAsync(transactionHistories);
+
+                await _investmentTransactionRepository.AddRangeAsync(investmentTransactions);
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+        }
+
+        private static DateTime GetOperationDate(DateTime dateFromFile)
+        {
+            DateTime operationDate = dateFromFile.AddDays(-2);
+
+            switch (operationDate.DayOfWeek)
+            {
+                case DayOfWeek.Sunday:
+                    operationDate = dateFromFile.AddDays(-4);
+                    break;
+                case DayOfWeek.Saturday:
+                    operationDate = dateFromFile.AddDays(-3);
+                    break;
+            }
+
+            return operationDate;
+        }
         #endregion
     }
 }

@@ -21,6 +21,8 @@
             services.AddScoped<IInvestmentHistoryRepository, InvestmentHistoryRepository>();
             services.AddScoped<IStockBrokerRepository, StockBrokerRepository>();
             services.AddScoped<IAssetRepository, AssetRepository>();
+            services.AddScoped<ITransactionHistoryRepository, TransactionHistoryRepository>();
+            services.AddScoped<IInvestmentTransactionRepository, InvestmentTransactionRepository>();
             #endregion
 
             return services;

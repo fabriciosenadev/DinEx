@@ -5,6 +5,7 @@
         public AssetType? Type { get; private set; }
         public string Ticker { get; private set; }
         public string CompanyName { get; private set; }
+        public string? TaxId { get; private set; }
 
         public static Asset Create(string ticker, string companyName)
         {
@@ -22,18 +23,14 @@
             {
                 var splitedName = rawAssetName.Split("-");
                 var asset = Asset.Create(
-                    ticker: splitedName[0], 
-                    companyName: splitedName[1]);
-                
-                assetList.Add(asset);
+                    ticker: splitedName[0].Trim(), 
+                    companyName: splitedName[1].Trim());
+
+                if(!assetList.Any(x => x.Ticker == asset.Ticker))                
+                    assetList.Add(asset);
             }
 
             return assetList;
-        }
-
-        public static string FormatNameForFile(string ticker, string companyName)
-        {
-            return $"{ticker} - {companyName}";
         }
     }
 }
