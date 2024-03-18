@@ -88,6 +88,11 @@
                 var assets = await AssetsAddRangeAsync(assetNames);
 
                 await InvestmentTransactionsAddRangeAsync(boughtAssets, stockBrokers, assets, userId);
+
+                var queueInAssetsToDelete = boughtAssets.Select(x => { 
+                    x.DeletedAt = DateTime.UtcNow;
+                    return x;
+                }).ToList();
             }
         }
 
