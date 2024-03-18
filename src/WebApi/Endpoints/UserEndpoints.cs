@@ -21,7 +21,7 @@ public static class UserEndpoints
         app.MapPost("/user/request-activation-link", async (
             [FromServices] IUserAppService userAppService,
             HttpContext context,
-            ActivationRequest request) =>
+            ActivationUrlRequest request) =>
         {
             var result = await userAppService.RequestActivationLinkAsync(request);
             return Base.GetResult(result);

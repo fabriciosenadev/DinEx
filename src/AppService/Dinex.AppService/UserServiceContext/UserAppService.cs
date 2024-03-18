@@ -58,7 +58,7 @@
             }
         }
 
-        public async Task<OperationResult> RequestActivationLinkAsync(ActivationRequest request)
+        public async Task<OperationResult> RequestActivationLinkAsync(ActivationUrlRequest request)
         {
             try
             {

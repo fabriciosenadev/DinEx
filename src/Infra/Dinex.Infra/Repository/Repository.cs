@@ -11,19 +11,19 @@
             _dbSet = context.Set<T>();
         }
 
-        //public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
-        //{
-        //    return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
-        //}
-
         public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
         {
-            var query = _dbSet.AsNoTracking().AsQueryable();
-            var filteredData = query.Where(predicate);
-
-            // Avaliação no lado do cliente
-            return await filteredData.ToListAsync();
+            return await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
         }
+
+        //public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
+        //{
+        //    var query = _dbSet.AsNoTracking().AsQueryable();
+        //    var filteredData = query.Where(predicate);
+
+        //    // Avaliação no lado do cliente
+        //    return await filteredData.ToListAsync();
+        //}
 
 
         public virtual async Task<T?> GetByIdAsync(Guid id)
