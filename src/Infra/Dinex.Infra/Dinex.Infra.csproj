@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <Folder Include="DB\Migrations\" />
+    <Folder Include="Repository\NewFolder\" />
   </ItemGroup>
 
   <ItemGroup>

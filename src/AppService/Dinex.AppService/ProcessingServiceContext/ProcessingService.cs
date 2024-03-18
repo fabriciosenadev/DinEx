@@ -11,6 +11,7 @@
         private readonly IAssetRepository _assetRepository;
         private readonly ITransactionHistoryRepository _transactionHistoryRepository;
         private readonly IInvestmentTransactionRepository _investmentTransactionRepository;
+        private readonly IWalletRepository _walletRepository;
 
         public ProcessingService(
             ILogger<ProcessingService> logger,
@@ -19,7 +20,8 @@
             IStockBrokerRepository stockBrokerRepository,
             IAssetRepository assetRepository,
             ITransactionHistoryRepository transactionHistoryRepository,
-            IInvestmentTransactionRepository investmentTransactionRepository)
+            IInvestmentTransactionRepository investmentTransactionRepository,
+            IWalletRepository walletRepository)
         {
             _logger = logger;
             _queueInRepository = queueInRepository;
@@ -28,6 +30,7 @@
             _assetRepository = assetRepository;
             _transactionHistoryRepository = transactionHistoryRepository;
             _investmentTransactionRepository = investmentTransactionRepository;
+            _walletRepository = walletRepository;
         }
 
         public async Task ProcessQueueIn(Guid userId)
@@ -69,7 +72,8 @@
         #region
         private async Task ProcessingInvestment(IEnumerable<Guid> queueInIds, Guid userId)
         {
-            var investmentData = await _investmentHistoryRepository.FindAsync(x => queueInIds.Contains(x.QueueId));
+            var investmentData = await _investmentHistoryRepository.FindAsync(
+                x => queueInIds.Contains(x.QueueId) && x.DeletedAt == null);
 
             var boughtAssets = investmentData.Where(x =>
                     x.TransactionType == InvestmentTransactionType.Transfer
@@ -97,7 +101,7 @@
             var stockBrokersFound = await _stockBrokerRepository.FindAsync(x => stockBrokerNames.Contains(x.Name));
 
             var stockBrokerNamesToCreate = stockBrokerNames.Except(stockBrokersFound.Select(x => x.Name));
-            if(!stockBrokerNamesToCreate.Any())
+            if (!stockBrokerNamesToCreate.Any())
                 return stockBrokersFound;
 
             var stockBrokers = StockBroker.CreateRange(stockBrokerNamesToCreate);
@@ -109,26 +113,17 @@
 
         private async Task<IEnumerable<Asset>> AssetsAddRangeAsync(IEnumerable<string> assetNames)
         {
-            try
-            {
-                var assetsFound = await _assetRepository.FindAsync(x => assetNames.Contains(x.Ticker.Trim()));
+            var assetsFound = await _assetRepository.FindAsync(x => assetNames.Contains(x.Ticker.Trim()));
 
-                var assetNamesToCreate = assetNames.Except(assetsFound.Select(x => x.Ticker.Trim()));
-                if (!assetNamesToCreate.Any())
-                    return assetsFound;
+            var assetNamesToCreate = assetNames.Except(assetsFound.Select(x => x.Ticker.Trim()));
+            if (!assetNamesToCreate.Any())
+                return assetsFound;
 
-                var assets = Asset.CreateRange(assetNamesToCreate);
+            var assets = Asset.CreateRange(assetNamesToCreate);
 
-                await _assetRepository.AddRangeAsync(assets);
+            await _assetRepository.AddRangeAsync(assets);
 
-                return assets;
-
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
+            return assets;
         }
 
         private async Task InvestmentTransactionsAddRangeAsync(IEnumerable<InvestmentHistory> boughtAssets,
@@ -136,45 +131,38 @@
             IEnumerable<Asset> assets,
             Guid userId)
         {
-            try
+            var transactionHistories = new List<TransactionHistory>();
+            var investmentTransactions = new List<InvestmentTransaction>();
+            foreach (var boughtAsset in boughtAssets)
             {
-                var transactionHistories = new List<TransactionHistory>();
-                var investmentTransactions = new List<InvestmentTransaction>();
-                foreach (var boughtAsset in boughtAssets)
-                {
-                    var assetId = assets.Where(x => boughtAsset.Product.Contains(x.Ticker.Trim()))
-                                        .Select(x => x.Id).First();
-                    var stockBrokerId = stockBrokers.Where(x => x.Name == boughtAsset.Institution)
-                                                                .Select(x => x.Id).First();
+                var assetId = assets.Where(x => boughtAsset.Product.Contains(x.Ticker.Trim()))
+                                    .Select(x => x.Id).First();
+                var stockBrokerId = stockBrokers.Where(x => x.Name == boughtAsset.Institution)
+                                                            .Select(x => x.Id).First();
 
-                    var transactionHistory = TransactionHistory.Create(
-                        userId,
-                        GetOperationDate(boughtAsset.Date),
-                        TransactionActivity.Investment);
-                    transactionHistories.Add(transactionHistory);
+                var transactionHistory = TransactionHistory.Create(
+                    userId,
+                    GetOperationDate(boughtAsset.Date),
+                    TransactionActivity.Investment);
+                transactionHistories.Add(transactionHistory);
 
-                    var investmentTransaction = InvestmentTransaction.Create(
-                        transactionHistoryId: transactionHistory.Id,
-                        applicable: boughtAsset.Applicable,
-                        transactionType: boughtAsset.TransactionType,
-                        assetId,
-                        unitPrice: boughtAsset.UnitPrice,
-                        transactionAmount: boughtAsset.OperationValue,
-                        assetQuantity: boughtAsset.Quantity,
-                        stockBrokerId);
-                    investmentTransactions.Add(investmentTransaction);
-                }
-
-
-                await _transactionHistoryRepository.AddRangeAsync(transactionHistories);
-
-                await _investmentTransactionRepository.AddRangeAsync(investmentTransactions);
+                var investmentTransaction = InvestmentTransaction.Create(
+                    transactionHistoryId: transactionHistory.Id,
+                    applicable: boughtAsset.Applicable,
+                    transactionType: boughtAsset.TransactionType,
+                    assetId,
+                    unitPrice: boughtAsset.UnitPrice,
+                    transactionAmount: boughtAsset.OperationValue,
+                    assetQuantity: boughtAsset.Quantity,
+                    stockBrokerId);
+                investmentTransactions.Add(investmentTransaction);
             }
-            catch (Exception ex)
-            {
 
-                throw;
-            }
+            await _transactionHistoryRepository.AddRangeAsync(transactionHistories);
+
+            await _investmentTransactionRepository.AddRangeAsync(investmentTransactions);
+
+            await HandleInvestmentWallet(investmentTransactions, userId);
         }
 
         private static DateTime GetOperationDate(DateTime dateFromFile)
@@ -192,6 +180,47 @@
             }
 
             return operationDate;
+        }
+
+        private async Task HandleInvestmentWallet(List<InvestmentTransaction> investmentTransactions, Guid userId)
+        {
+
+            var createWallets = new List<Wallet>();
+            var updateWallets = new List<Wallet>();
+            foreach (var transaction in investmentTransactions)
+            {
+                if (createWallets.Any(x => x.AssetId == transaction.AssetId))
+                {
+                    var wallet = createWallets.Find(x => x.AssetId == transaction.AssetId);
+                    var newWallet = wallet;
+
+                    newWallet.UpdateAsset(transaction.AssetQuantity, transaction.AssetTransactionAmount);
+
+                    createWallets.Remove(wallet);
+                    createWallets.Add(newWallet);
+
+                    continue;
+                }
+
+                var walletAsset = await _walletRepository.GetByIdAsync(transaction.AssetId);
+                if (walletAsset is null)
+                {
+                    var wallet = Wallet.CreateAsset(
+                        userId,
+                        assetId: transaction.AssetId,
+                        assetQuantity: transaction.AssetQuantity,
+                        investedAmount: transaction.AssetTransactionAmount);
+                    createWallets.Add(wallet);
+
+                    continue;
+                }
+
+                walletAsset.UpdateAsset(transaction.AssetQuantity, transaction.AssetTransactionAmount);
+                updateWallets.Add(walletAsset);
+            }
+
+            await _walletRepository.AddRangeAsync(createWallets);
+            await _walletRepository.UpdateRangeAsync(updateWallets);
         }
         #endregion
     }

@@ -23,6 +23,7 @@
             services.AddScoped<IAssetRepository, AssetRepository>();
             services.AddScoped<ITransactionHistoryRepository, TransactionHistoryRepository>();
             services.AddScoped<IInvestmentTransactionRepository, InvestmentTransactionRepository>();
+            services.AddScoped<IWalletRepository, WalletRepository>();
             #endregion
 
             return services;

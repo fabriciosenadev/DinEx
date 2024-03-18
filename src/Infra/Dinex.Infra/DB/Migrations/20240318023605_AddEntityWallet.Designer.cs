@@ -3,6 +3,7 @@ using System;
 using Dinex.Infra;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dinex.Infra.Db.Migrations
 {
     [DbContext(typeof(DinexApiContext))]
-    partial class DinexApiContextModelSnapshot : ModelSnapshot
+    [Migration("20240318023605_AddEntityWallet")]
+    partial class AddEntityWallet
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.3");
