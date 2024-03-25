@@ -89,11 +89,16 @@
 
                 await InvestmentTransactionsAddRangeAsync(boughtAssets, stockBrokers, assets, userId);
 
-                var queueInAssetsToDelete = boughtAssets.Select(x => { 
+                var queueInAssetsToDelete = boughtAssets.Select(x =>
+                {
                     x.DeletedAt = DateTime.UtcNow;
                     return x;
                 }).ToList();
             }
+
+            // TODO: need to implement sell processing 
+
+            // TODO: need to implement dividends processing
         }
 
         private async Task ProcessFinancialPlanning(IEnumerable<Guid> queueInIds)
@@ -224,8 +229,11 @@
                 updateWallets.Add(walletAsset);
             }
 
-            await _walletRepository.AddRangeAsync(createWallets);
-            await _walletRepository.UpdateRangeAsync(updateWallets);
+            if (createWallets.Count > 0)
+                await _walletRepository.AddRangeAsync(createWallets);
+
+            if (updateWallets.Count > 0)
+                await _walletRepository.UpdateRangeAsync(updateWallets);
         }
         #endregion
     }
